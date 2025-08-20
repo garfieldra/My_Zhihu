@@ -8,22 +8,27 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long Id;
 
+    @Column(unique = true)
     private String username;
 
     @Column(unique = true) //一个邮箱仅允许注册一个账号
     private String email;
 
+    @Column(length = 1000)
+    private String bio;
+
     @Column(length = 500)
-    private  String bio;
+    private String password;
 
     public User(){}
 
-    public User(long Id, String username, String email, String bio)
+    public User(long Id, String username, String email, String bio, String password)
     {
         this.Id = Id;
         this.username = username;
         this.email = email;
         this.bio = bio;
+        this.password = password;
     }
 
     public long getId()
@@ -66,4 +71,11 @@ public class User {
         this.bio = bio;
     }
 
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getPassword() {
+        return password;
+    }
 }
