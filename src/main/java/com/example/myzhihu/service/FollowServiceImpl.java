@@ -1,6 +1,7 @@
 package com.example.myzhihu.service;
 
 import com.example.myzhihu.dto.FollowRequest;
+import com.example.myzhihu.entity.ActionType;
 import com.example.myzhihu.entity.Follow;
 import com.example.myzhihu.entity.User;
 import com.example.myzhihu.exception.BusinessException;
@@ -17,11 +18,13 @@ public class FollowServiceImpl implements FollowService{
 
     private final FollowRepository followRepository;
     private final UserRepository userRepository;
+    private final FeedService feedService;
 
-    public FollowServiceImpl(FollowRepository followRepository, UserRepository userRepository)
+    public FollowServiceImpl(FollowRepository followRepository, UserRepository userRepository, FeedService feedService)
     {
         this.followRepository = followRepository;
         this.userRepository = userRepository;
+        this.feedService = feedService;
     }
 
     public boolean hasUserFollowed(Long followerId, Long followingId)
@@ -29,6 +32,7 @@ public class FollowServiceImpl implements FollowService{
         return followRepository.findByFollowerIdAndFollowingId(followerId, followingId).isPresent();
     }
 
+    @Transactional
     public Follow addFollow(FollowRequest followRequest) {
         User follower = userRepository.findById(followRequest.getFollowerId())
                 .orElseThrow(() -> new ResourceNotFoundException("未找到id为" + followRequest.getFollowerId() + "的用户"));
@@ -41,7 +45,11 @@ public class FollowServiceImpl implements FollowService{
         Follow follow = new Follow();
         follow.setFollower(follower);
         follow.setFollowing(following);
-        return followRepository.save(follow);
+        follow = followRepository.save(follow);
+
+        feedService.createFeed(follow.getFollower().getId(), ActionType.FOLLOW_USER,  follow.getFollowing().getId());
+
+        return follow;
     }
 
     public int countFollowers(Long userId)
@@ -68,7 +76,7 @@ public class FollowServiceImpl implements FollowService{
 //        if(!followRepository.findByFollowerIdAndFollowingId(followerId, followingId).isPresent())
         if(!followRepository.existsByFollowerIdAndFollowingId(followerId, followingId))
         {
-            throw new ResourceNotFoundException("不存在改关注关系");
+            throw new ResourceNotFoundException("不存在该关注关系");
         }
         followRepository.deleteByFollowerIdAndFollowingId(followerId, followingId);
         return;

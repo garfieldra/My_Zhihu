@@ -2,6 +2,7 @@ package com.example.myzhihu.service;
 
 
 import com.example.myzhihu.dto.QuestionRequest;
+import com.example.myzhihu.entity.ActionType;
 import com.example.myzhihu.entity.Question;
 import com.example.myzhihu.exception.ResourceNotFoundException;
 import com.example.myzhihu.repository.QuestionRepository;
@@ -16,11 +17,13 @@ import java.util.Optional;
 public class QuestionServiceImpl implements QuestionService{
     private final QuestionRepository questionRepository;
     private final UserRepository userRepository;
+    private final FeedService feedService;
 
-    public QuestionServiceImpl(QuestionRepository questionRepository, UserRepository userRepository)
+    public QuestionServiceImpl(QuestionRepository questionRepository, UserRepository userRepository, FeedService feedService)
     {
         this.questionRepository = questionRepository;
         this.userRepository = userRepository;
+        this.feedService = feedService;
     }
 
     public List<Question> getAllQuestions()
@@ -52,7 +55,11 @@ public class QuestionServiceImpl implements QuestionService{
         question.setTitle(questionRequest.getTitle());
         question.setContent(questionRequest.getContent());
         question.setUser(user);
-        return questionRepository.save(question);
+        question = questionRepository.save(question);
+
+        feedService.createFeed(question.getUser().getId(), ActionType.CREATE_QUESTION, question.getId());
+
+        return question;
     }
 
     public void deleteQuestion(Long id)

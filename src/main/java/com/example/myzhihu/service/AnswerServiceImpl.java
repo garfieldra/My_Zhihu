@@ -1,15 +1,18 @@
 package com.example.myzhihu.service;
 
 import com.example.myzhihu.dto.AnswerRequest;
+import com.example.myzhihu.entity.ActionType;
 import com.example.myzhihu.entity.Answer;
 import com.example.myzhihu.entity.Question;
 import com.example.myzhihu.entity.User;
 import com.example.myzhihu.exception.ResourceNotFoundException;
 import com.example.myzhihu.repository.AnswerRepository;
+import com.example.myzhihu.repository.FeedRepository;
 import com.example.myzhihu.repository.QuestionRepository;
 import com.example.myzhihu.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
+import javax.swing.*;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,13 +22,15 @@ public class AnswerServiceImpl implements AnswerService{
     private final AnswerRepository answerRepository;
     private final QuestionRepository questionRepository;
     private final UserRepository userRepository;
+    private final FeedService feedService;
 
 
-    public AnswerServiceImpl(AnswerRepository answerRepository, QuestionRepository questionRepository, UserRepository userRepository)
+    public AnswerServiceImpl(AnswerRepository answerRepository, QuestionRepository questionRepository, UserRepository userRepository, FeedService feedService)
     {
         this.answerRepository = answerRepository;
         this.questionRepository = questionRepository;
         this.userRepository = userRepository;
+        this.feedService = feedService;
     }
 
     public List<Answer> getAllAnswers()
@@ -55,7 +60,11 @@ public class AnswerServiceImpl implements AnswerService{
         answer.setAuthor(author);
         answer.setContent(answerRequest.getContent());
         answer.setQuestion(question);
-        return answerRepository.save(answer);
+        answer = answerRepository.save(answer);
+
+        feedService.createFeed(author.getId(), ActionType.CREATE_ANSWER, answer.getId());
+
+        return answer;
     }
 
     public void deleteAnswer(Long id)
