@@ -7,10 +7,14 @@ import com.example.myzhihu.entity.Question;
 import com.example.myzhihu.exception.ResourceNotFoundException;
 import com.example.myzhihu.repository.QuestionRepository;
 import com.example.myzhihu.repository.UserRepository;
+import com.example.myzhihu.search.QuestionDocument;
+import com.example.myzhihu.search.QuestionSearchService;
+import com.example.myzhihu.search.QuestionSearchServiceImpl;
 import org.springframework.stereotype.Service;
 import com.example.myzhihu.entity.User;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -18,12 +22,14 @@ public class QuestionServiceImpl implements QuestionService{
     private final QuestionRepository questionRepository;
     private final UserRepository userRepository;
     private final FeedService feedService;
+    private final QuestionSearchService questionSearchService;
 
-    public QuestionServiceImpl(QuestionRepository questionRepository, UserRepository userRepository, FeedService feedService)
+    public QuestionServiceImpl(QuestionRepository questionRepository, UserRepository userRepository, FeedService feedService, QuestionSearchService questionSearchService)
     {
         this.questionRepository = questionRepository;
         this.userRepository = userRepository;
         this.feedService = feedService;
+        this.questionSearchService = questionSearchService;
     }
 
     public List<Question> getAllQuestions()
@@ -59,6 +65,15 @@ public class QuestionServiceImpl implements QuestionService{
 
         feedService.createFeed(question.getUser().getId(), ActionType.CREATE_QUESTION, question.getId());
 
+        QuestionDocument questionDocument = new QuestionDocument(
+                question.getId(),
+                question.getTitle(),
+                question.getContent(),
+                question.getUser().getUsername(),
+                question.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        );
+        questionSearchService.saveQuestionDocument(questionDocument);
+
         return question;
     }
 
@@ -69,6 +84,7 @@ public class QuestionServiceImpl implements QuestionService{
             throw new ResourceNotFoundException("未找到id为" + id + "的问题");
         }
         questionRepository.deleteById(id);
+        questionSearchService.deleteQuestionDocumentById(id);
         return;
     }
 }
