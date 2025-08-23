@@ -11,13 +11,18 @@ public class QuestionDocument {
     @Id
     private Long id;
 
-    @Field(type = FieldType.Text)
+//    @Field(type = FieldType.Text) // 暂时使用默认分析器
+    @Field(type = FieldType.Text, analyzer = "ik_max_word")
     private String title;
 
-    @Field(type = FieldType.Text)
+//    @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
+//   @Field(type = FieldType.Text)
+    @Field(type = FieldType.Text, analyzer = "ik_max_word")
     private String content;
 
-    @Field(type = FieldType.Text)
+//    @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
+//    @Field(type = FieldType.Text)
+   @Field(type = FieldType.Text, analyzer = "ik_max_word")
     private String username;
 
     @Field(type = FieldType.Date)
