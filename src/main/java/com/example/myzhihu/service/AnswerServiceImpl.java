@@ -10,6 +10,9 @@ import com.example.myzhihu.repository.AnswerRepository;
 import com.example.myzhihu.repository.FeedRepository;
 import com.example.myzhihu.repository.QuestionRepository;
 import com.example.myzhihu.repository.UserRepository;
+import com.example.myzhihu.search.AnswerDocument;
+import com.example.myzhihu.search.AnswerSearchRepository;
+import com.example.myzhihu.search.AnswerSearchService;
 import org.springframework.stereotype.Service;
 
 import javax.swing.*;
@@ -23,14 +26,16 @@ public class AnswerServiceImpl implements AnswerService{
     private final QuestionRepository questionRepository;
     private final UserRepository userRepository;
     private final FeedService feedService;
+    private final AnswerSearchService answerSearchService;
 
 
-    public AnswerServiceImpl(AnswerRepository answerRepository, QuestionRepository questionRepository, UserRepository userRepository, FeedService feedService)
+    public AnswerServiceImpl(AnswerRepository answerRepository, QuestionRepository questionRepository, UserRepository userRepository, FeedService feedService, AnswerSearchService answerSearchService)
     {
         this.answerRepository = answerRepository;
         this.questionRepository = questionRepository;
         this.userRepository = userRepository;
         this.feedService = feedService;
+        this.answerSearchService = answerSearchService;
     }
 
     public List<Answer> getAllAnswers()
@@ -62,6 +67,17 @@ public class AnswerServiceImpl implements AnswerService{
         answer.setQuestion(question);
         answer = answerRepository.save(answer);
 
+
+        AnswerDocument answerDocument = new AnswerDocument(
+                answer.getId(),
+                answer.getQuestion().getTitle(),
+                answer.getContent(),
+                answer.getAuthor().getUsername(),
+                answer.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        );
+        answerSearchService.saveAnswerDocument(answerDocument);
+
+
         feedService.createFeed(author.getId(), ActionType.CREATE_ANSWER, answer.getId());
 
         return answer;
@@ -74,6 +90,8 @@ public class AnswerServiceImpl implements AnswerService{
             throw new ResourceNotFoundException("未找到id为" + id + "的回答");
         }
         answerRepository.deleteById(id);
+
+        answerSearchService.deleteAnswerDocumentById(id);
         return;
     }
 }

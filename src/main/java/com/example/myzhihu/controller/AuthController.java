@@ -6,6 +6,8 @@ import com.example.myzhihu.entity.User;
 import com.example.myzhihu.exception.BusinessException;
 import com.example.myzhihu.exception.ResourceNotFoundException;
 import com.example.myzhihu.repository.UserRepository;
+import com.example.myzhihu.search.UserDocument;
+import com.example.myzhihu.search.UserSearchService;
 import com.example.myzhihu.security.JwtUtil;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,13 +27,15 @@ public class AuthController {
     private UserRepository userRepository;
     private PasswordEncoder passwordEncoder;
     private JwtUtil jwtUtil;
+    private UserSearchService userSearchService;
 
     @Autowired
-    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil)
+    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, UserSearchService userSearchService)
     {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.userSearchService = userSearchService;
     }
 
     // 注册账号
@@ -56,6 +60,13 @@ public class AuthController {
         user.setEmail(registerRequest.getEmail());
         user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
         userRepository.save(user);
+
+        UserDocument userDocument = new UserDocument(
+                user.getId(),
+                user.getUsername()
+        );
+        userSearchService.saveUserDocument(userDocument);
+
         return ResponseEntity.ok(Map.of("message", "注册成功"));
     }
 

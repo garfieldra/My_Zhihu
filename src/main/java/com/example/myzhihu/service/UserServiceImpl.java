@@ -1,6 +1,8 @@
 package com.example.myzhihu.service;
 
 import com.example.myzhihu.repository.UserRepository;
+import com.example.myzhihu.search.UserDocument;
+import com.example.myzhihu.search.UserSearchService;
 import org.springframework.stereotype.Service;
 import com.example.myzhihu.entity.User;
 import java.util.List;
@@ -10,15 +12,24 @@ import com.example.myzhihu.exception.ResourceNotFoundException;
 @Service
 public class UserServiceImpl implements UserService{
 
-    private  final UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final UserSearchService userSearchService;
 
-    public  UserServiceImpl(UserRepository userRepository)
+    public  UserServiceImpl(UserRepository userRepository, UserSearchService userSearchService)
     {
         this.userRepository=userRepository;
+        this.userSearchService=userSearchService;
     }
 
     public User saveUser(User user)
     {
+
+        UserDocument userDocument = new UserDocument(
+                user.getId(),
+                user.getUsername()
+        );
+        userSearchService.saveUserDocument(userDocument);
+
         return userRepository.save(user);
         //return user;
     }
@@ -41,6 +52,7 @@ public class UserServiceImpl implements UserService{
             throw new ResourceNotFoundException("未找到id为" + id + "的用户");
         }
         userRepository.deleteById(id);
+        userSearchService.deleteUserDocumentById(id);
         return;
     }
 
