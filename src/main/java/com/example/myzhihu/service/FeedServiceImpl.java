@@ -10,6 +10,7 @@ import com.example.myzhihu.exception.ResourceNotFoundException;
 import com.example.myzhihu.repository.FeedRepository;
 import com.example.myzhihu.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -52,6 +53,17 @@ public class FeedServiceImpl implements FeedService {
             throw new ResourceNotFoundException("未找到该Feed");
         }
         feedRepository.deleteById(feedId);
+        return;
+    }
+
+    @Transactional
+    public void removeFeed(Long userId, ActionType actionType, Long targetId)
+    {
+        if(!feedRepository.existsFeedByUserIdAndActionTypeAndTargetId(userId, actionType, targetId))
+        {
+            throw new ResourceNotFoundException("未找到该Feed");
+        }
+        feedRepository.deleteFeedByUserIdAndActionTypeAndTargetId(userId, actionType, targetId);
         return;
     }
 }

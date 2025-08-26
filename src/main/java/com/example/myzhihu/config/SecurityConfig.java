@@ -55,7 +55,7 @@ public class SecurityConfig {
                 // 配置请求的访问规则
                 .authorizeHttpRequests(auth -> auth
                         // 登录、注册接口允许匿名访问
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/**","/search/**").permitAll()
                         // 其他接口都需要认证，即登录后才能访问
                         .anyRequest().authenticated());
 

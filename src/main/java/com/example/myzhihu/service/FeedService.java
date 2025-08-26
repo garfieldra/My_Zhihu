@@ -14,4 +14,6 @@ public interface FeedService {
     Feed createFeed(Long userId, ActionType actionType, Long targetId);
 
     void deleteFeedByFeedId(Long feedId);
+
+    void removeFeed(Long userId, ActionType actionType, Long targetId);
 }
