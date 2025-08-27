@@ -5,11 +5,14 @@ import com.example.myzhihu.entity.ActionType;
 import com.example.myzhihu.entity.Follow;
 import com.example.myzhihu.entity.User;
 import com.example.myzhihu.exception.BusinessException;
+import com.example.myzhihu.exception.OwnershipMismatchException;
 import com.example.myzhihu.exception.ResourceNotFoundException;
 import com.example.myzhihu.repository.FollowRepository;
 import com.example.myzhihu.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 
@@ -34,8 +37,23 @@ public class FollowServiceImpl implements FollowService{
 
     @Transactional
     public Follow addFollow(FollowRequest followRequest) {
-        User follower = userRepository.findById(followRequest.getFollowerId())
-                .orElseThrow(() -> new ResourceNotFoundException("未找到id为" + followRequest.getFollowerId() + "的用户"));
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = (authentication == null ? null : authentication.getName());
+        if(currentUsername == null)
+        {
+            throw new OwnershipMismatchException("未登录，无法关注用户");
+        }
+        User follower = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new ResourceNotFoundException("未找到当前用户"));
+
+        if(!followRequest.getFollowerId().equals(follower.getId()))
+        {
+            throw new OwnershipMismatchException("无法以他人账号关注用户");
+        }
+
+//        User follower = userRepository.findById(followRequest.getFollowerId())
+//                .orElseThrow(() -> new ResourceNotFoundException("未找到id为" + followRequest.getFollowerId() + "的用户"));
         User following = userRepository.findById(followRequest.getFollowingId())
                 .orElseThrow(() -> new ResourceNotFoundException("未找到id为" + followRequest.getFollowingId() + "的用户"));
         if(followRepository.findByFollowerIdAndFollowingId(followRequest.getFollowerId(), followRequest.getFollowingId()).isPresent())
@@ -74,6 +92,22 @@ public class FollowServiceImpl implements FollowService{
     public void removeFollow(Long followerId, Long followingId)
     {
 //        if(!followRepository.findByFollowerIdAndFollowingId(followerId, followingId).isPresent())
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = (authentication == null ? null : authentication.getName());
+
+        if(currentUsername == null)
+        {
+            throw new OwnershipMismatchException("未登录，无法取消关注");
+        }
+        User follower = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new ResourceNotFoundException("当前用户不存在"));
+
+        if(!followerId.equals(follower.getId()))
+        {
+            throw new OwnershipMismatchException("无法以他人身份取消关注");
+        }
+
+
         if(!followRepository.existsByFollowerIdAndFollowingId(followerId, followingId))
         {
             throw new ResourceNotFoundException("不存在该关注关系");

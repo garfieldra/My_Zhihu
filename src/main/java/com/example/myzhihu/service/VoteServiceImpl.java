@@ -2,12 +2,16 @@ package com.example.myzhihu.service;
 
 import com.example.myzhihu.dto.VoteRequest;
 import com.example.myzhihu.entity.*;
+import com.example.myzhihu.exception.OwnershipMismatchException;
 import com.example.myzhihu.exception.ResourceNotFoundException;
 import com.example.myzhihu.repository.AnswerRepository;
 import com.example.myzhihu.repository.UserRepository;
 import com.example.myzhihu.repository.VoteRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 
 import java.util.Optional;
 
@@ -29,21 +33,35 @@ public class VoteServiceImpl implements VoteService{
 
     public Vote addOrUpdateVote(VoteRequest voteRequest)
     {
-        Optional<User> userOptional = userRepository.findById(voteRequest.getUserId());
-        Optional<Answer> answerOptional = answerRepository.findById(voteRequest.getAnswerId());
-        if(userOptional.isEmpty())
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = (authentication != null ? authentication.getName() : null);
+        if(currentUsername == null)
         {
-            throw new ResourceNotFoundException("未找到id为" + voteRequest.getUserId() + "的用户");
+            throw new OwnershipMismatchException("未登录，无法点赞/点踩");
         }
-        else if(answerOptional.isEmpty())
+        User user = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new ResourceNotFoundException("当前用户不存在"));
+
+        Answer answer = answerRepository.findById(voteRequest.getAnswerId())
+                .orElseThrow(() -> new ResourceNotFoundException("当前问题不存在"));
+
+        if(!voteRequest.getUserId().equals(user.getId()))
         {
-            throw new ResourceNotFoundException("未找到id为" + voteRequest.getAnswerId() + "的回答");
+            throw new OwnershipMismatchException("无权以他人身份点赞/点踩");
         }
+//        Optional<User> userOptional = userRepository.findById(voteRequest.getUserId());
+//        Optional<Answer> answerOptional = answerRepository.findById(voteRequest.getAnswerId());
+//        if(userOptional.isEmpty())
+//        {
+//            throw new ResourceNotFoundException("未找到id为" + voteRequest.getUserId() + "的用户");
+//        }
+//        else if(answerOptional.isEmpty())
+//        {
+//            throw new ResourceNotFoundException("未找到id为" + voteRequest.getAnswerId() + "的回答");
+//        }
         Optional<Vote> voteOptional = voteRepository.findByUserIdAndAnswerId(voteRequest.getUserId(), voteRequest.getAnswerId());
         if(voteOptional.isEmpty())
         {
-            User user = userOptional.get();
-            Answer answer = answerOptional.get();
             Vote vote = new Vote();
             vote.setUser(user);
             vote.setAnswer(answer);
@@ -96,6 +114,24 @@ public class VoteServiceImpl implements VoteService{
     @Transactional
     public void removeVote(Long userId, Long answerId)
     {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = (authentication != null ? authentication.getName() : null);
+
+        if(currentUsername == null)
+        {
+            throw new OwnershipMismatchException("未登录账号");
+        }
+        User currentUser = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new ResourceNotFoundException("当前用户不存在"));
+
+        if(userId != null && !userId.equals(currentUser.getId()))
+        {
+            throw new OwnershipMismatchException("没有删除这一点赞/点踩的权限");
+        }
+
+        answerRepository.findById(answerId)
+                .orElseThrow(() -> new ResourceNotFoundException("未找到id为" + answerId + "的回答"));
+
         voteRepository.deleteByUserIdAndAnswerId(userId, answerId);
         return;
     }

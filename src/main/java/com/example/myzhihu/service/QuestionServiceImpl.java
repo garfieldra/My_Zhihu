@@ -4,17 +4,20 @@ package com.example.myzhihu.service;
 import com.example.myzhihu.dto.QuestionRequest;
 import com.example.myzhihu.entity.ActionType;
 import com.example.myzhihu.entity.Question;
+import com.example.myzhihu.exception.OwnershipMismatchException;
 import com.example.myzhihu.exception.ResourceNotFoundException;
 import com.example.myzhihu.repository.QuestionRepository;
 import com.example.myzhihu.repository.UserRepository;
 import com.example.myzhihu.search.QuestionDocument;
 import com.example.myzhihu.search.QuestionSearchService;
 import com.example.myzhihu.search.QuestionSearchServiceImpl;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import com.example.myzhihu.entity.User;
 
+import org.springframework.security.core.Authentication;
+
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -50,13 +53,28 @@ public class QuestionServiceImpl implements QuestionService{
 
     public Question saveQuestion(QuestionRequest questionRequest)
     {
-        Optional<User> userOptional = userRepository.findById(questionRequest.getUserId());
-        if(userOptional.isEmpty())
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = (authentication != null ? authentication.getName() : null);
+        if(currentUsername == null)
         {
-//            return null;
-            throw new ResourceNotFoundException("未找到id为" + questionRequest.getUserId() + "的用户");
+            throw new OwnershipMismatchException("需要登录才能发布问题");
         }
-        User user = userOptional.get();
+
+        User user= userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new ResourceNotFoundException("该用户不存在"));
+
+        if(questionRequest.getUserId() != null && !questionRequest.getUserId().equals(user.getId()))
+        {
+            throw new OwnershipMismatchException("无法以他人账号发布问题");
+        }
+
+//        Optional<User> userOptional = userRepository.findById(questionRequest.getUserId());
+//        if(userOptional.isEmpty())
+//        {
+////            return null;
+//            throw new ResourceNotFoundException("未找到id为" + questionRequest.getUserId() + "的用户");
+//        }
+//        User user = userOptional.get();
         Question question = new Question();
         question.setTitle(questionRequest.getTitle());
         question.setContent(questionRequest.getContent());
@@ -79,12 +97,23 @@ public class QuestionServiceImpl implements QuestionService{
 
     public void deleteQuestion(Long id)
     {
-        if(!questionRepository.existsById(id))
+//        if(!questionRepository.existsById(id))
+//        {
+//            throw new ResourceNotFoundException("未找到id为" + id + "的问题");
+//        }
+//        questionRepository.deleteById(id);
+//        questionSearchService.deleteQuestionDocumentById(id);
+//        return;
+        Question question = questionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("未找到id为" + id + "的问题"));
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = (authentication != null ? authentication.getName() : null);
+
+        if(currentUsername == null || !question.getUser().getUsername().equals(currentUsername))
         {
-            throw new ResourceNotFoundException("未找到id为" + id + "的问题");
+            throw new OwnershipMismatchException("没有删除该问题的权限");
         }
         questionRepository.deleteById(id);
         questionSearchService.deleteQuestionDocumentById(id);
-        return;
     }
 }

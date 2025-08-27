@@ -6,7 +6,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import com.example.myzhihu.entity.User;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -40,5 +39,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleMethodArgumentNotValid(MethodArgumentNotValidException ex)
     {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(OwnershipMismatchException.class)
+    public ResponseEntity<String> handleOwnershipMismatch(OwnershipMismatchException ex)
+    {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getMessage());
     }
 }
