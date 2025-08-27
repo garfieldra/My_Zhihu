@@ -6,12 +6,15 @@ import com.example.myzhihu.entity.Answer;
 import com.example.myzhihu.entity.AnswerFavorite;
 import com.example.myzhihu.entity.User;
 import com.example.myzhihu.exception.BusinessException;
+import com.example.myzhihu.exception.OwnershipMismatchException;
 import com.example.myzhihu.exception.ResourceNotFoundException;
 import com.example.myzhihu.repository.AnswerFavoriteRepository;
 import com.example.myzhihu.repository.AnswerRepository;
 import com.example.myzhihu.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 
 import java.util.List;
 
@@ -32,11 +35,27 @@ public class AnswerFavoriteServiceImpl implements AnswerFavoriteService {
 
     @Override
     public AnswerFavorite addAnswerFavorite(AnswerFavoriteRequest answerFavoriteRequest) {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = ( authentication == null ? null : authentication.getName() );
+
+        if( currentUsername == null ) {
+            throw new OwnershipMismatchException("请先登录账号，再收藏回答");
+        }
+
+        User user = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new ResourceNotFoundException("当前用户不存在"));
+
+        if(!answerFavoriteRequest.getUserId().equals(user.getId()))
+        {
+            throw new OwnershipMismatchException("无权以他人身份收藏回答");
+        }
+
         if(answerFavoriteRepository.existsByUserIdAndAnswerId(answerFavoriteRequest.getUserId(), answerFavoriteRequest.getAnswerId())) {
             throw new BusinessException("已收藏该回答");
         }
-        User user = userRepository.findById(answerFavoriteRequest.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("未找到id为" + answerFavoriteRequest.getUserId() + "的用户"));
+//        User user = userRepository.findById(answerFavoriteRequest.getUserId())
+//                .orElseThrow(() -> new ResourceNotFoundException("未找到id为" + answerFavoriteRequest.getUserId() + "的用户"));
         Answer answer = answerRepository.findById(answerFavoriteRequest.getAnswerId())
                 .orElseThrow(() -> new ResourceNotFoundException("未找到id为" + answerFavoriteRequest.getAnswerId() + "的回答"));
         AnswerFavorite answerFavorite = new AnswerFavorite();
