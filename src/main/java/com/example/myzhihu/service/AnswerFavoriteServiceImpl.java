@@ -72,6 +72,23 @@ public class AnswerFavoriteServiceImpl implements AnswerFavoriteService {
     @Transactional
     public void deleteAnswerFavorite(Long userId, Long answerId) {
 
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = ( authentication == null ? null : authentication.getName() );
+
+        if( currentUsername == null ) {
+            throw new OwnershipMismatchException("未登录，无法取消收藏");
+        }
+
+        User user = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new ResourceNotFoundException("当前用户不存在"));
+
+        if(!userId.equals(user.getId()))
+        {
+            throw new OwnershipMismatchException("无权删除他人收藏内容");
+        }
+
+
+
         if(!answerFavoriteRepository.existsByUserIdAndAnswerId(userId, answerId)) {
             throw new ResourceNotFoundException("未找到要删除的已收藏回答");
         }

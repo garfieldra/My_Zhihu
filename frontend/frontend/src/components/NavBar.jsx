@@ -14,7 +14,16 @@ export default function NavBar() {
         <nav style={{ display: 'flex', gap:12, padding: 16, borderBottom: '1px solid #eee' }}>
             <Link to="/">MyZhihu</Link>
             <Link to="questions">Questions</Link>
-            <
+            <div style={{ marginLeft:'auto' }}>
+                {user ? (
+                    <>
+                    <span style={{ marginRight:8 }}>Hi, {user.username}</span>
+                    <button onClick={handleLogout}>Logout</button>
+                    </>
+                ) : (
+                    <Link to="/login">Login</Link>
+                )}
+            </div>
         </nav>
     )
 }
