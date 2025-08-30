@@ -1,9 +1,6 @@
 package com.example.myzhihu.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
@@ -17,6 +14,7 @@ public class Notification {
 
     private Long userId;
 
+    @Enumerated(EnumType.STRING)
     private NotificationType notificationType;
 
     private String message;
@@ -74,7 +72,7 @@ public class Notification {
         this.createdAt = createdAt;
     }
 
-    public boolean getRead(){
+    public boolean isRead(){
         return read;
     }
 
