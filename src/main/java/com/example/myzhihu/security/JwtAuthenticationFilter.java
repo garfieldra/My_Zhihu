@@ -36,6 +36,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if(authHeader != null && authHeader.startsWith("Bearer "))
         {
             token = authHeader.substring(7);
+
+            if(jwtBlacklistService.isBlacklisted(token))
+            {
+                filterChain.doFilter(request,response);
+                return;
+            }
+
+
             username = jwtUtil.extractUsername(token);
         }
 
