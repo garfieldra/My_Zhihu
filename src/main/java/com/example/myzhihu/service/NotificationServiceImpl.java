@@ -94,6 +94,7 @@ public class NotificationServiceImpl implements NotificationService {
 
         sseEmitter.onCompletion(() -> sseEmitters.remove(userId));
         sseEmitter.onTimeout(() -> sseEmitters.remove(userId));
+        sseEmitter.onError((e) -> sseEmitters.remove(userId));
 
         return sseEmitter;
     }
@@ -120,7 +121,12 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void removeSubscription(Long userId) {
-        sseEmitters.remove(userId);
+        SseEmitter sseEmitter = sseEmitters.remove(userId);
+        if(sseEmitter != null){
+            try{
+                sseEmitter.complete();
+            } catch (Exception e){}
+        }
     }
 
     @Override
