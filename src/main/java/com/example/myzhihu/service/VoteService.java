@@ -12,4 +12,6 @@ public interface VoteService {
     int countDislikesByAnswer(Long answerId);
 
     void removeVote(Long userId, Long answerId);
+
+    int countTotalLikesByAnswer(Long answerId);
 }

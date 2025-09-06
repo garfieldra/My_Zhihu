@@ -1,8 +1,10 @@
 package com.example.myzhihu.service;
 
 import com.example.myzhihu.dto.CommentLikeRequest;
+import com.example.myzhihu.dto.NotificationRequest;
 import com.example.myzhihu.entity.Comment;
 import com.example.myzhihu.entity.CommentLike;
+import com.example.myzhihu.entity.NotificationType;
 import com.example.myzhihu.entity.User;
 import com.example.myzhihu.exception.BusinessException;
 import com.example.myzhihu.exception.OwnershipMismatchException;
@@ -21,12 +23,14 @@ public class CommentLikeServiceImpl implements CommentLikeService{
     private final CommentLikeRepository commentLikeRepository;
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
-    public CommentLikeServiceImpl(CommentLikeRepository commentLikeRepository, CommentRepository commentRepository, UserRepository userRepository)
+    public CommentLikeServiceImpl(CommentLikeRepository commentLikeRepository, CommentRepository commentRepository, UserRepository userRepository, NotificationService notificationService)
     {
         this.commentLikeRepository = commentLikeRepository;
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     public boolean hasUserLiked(Long commentId, Long userId) {
@@ -41,6 +45,7 @@ public class CommentLikeServiceImpl implements CommentLikeService{
         return commentLikeRepository.findByCommentIdAndUserId(commentId, userId).isPresent();
     }
 
+    @Transactional
     public CommentLike addCommentLike(CommentLikeRequest commentLikeRequest) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -69,7 +74,18 @@ public class CommentLikeServiceImpl implements CommentLikeService{
         CommentLike commentLike = new CommentLike();
         commentLike.setComment(comment);
         commentLike.setUser(user);
-        return commentLikeRepository.save(commentLike);
+        commentLikeRepository.save(commentLike);
+
+        if(!commentLikeRequest.getUserId().equals(comment.getUser().getId()))
+        {
+            NotificationRequest notificationRequest = new NotificationRequest();
+            notificationRequest.setUserId(comment.getUser().getId());
+            notificationRequest.setNotificationType(NotificationType.COMMENT_BE_LIKED);
+            notificationRequest.setMessage("您在问题" + commentLike.getComment().getAnswer().getQuestion().getTitle() + "下的评论收到了新的点赞");
+            notificationService.sendNotification(notificationRequest);
+        }
+
+        return commentLike;
     }
 
     public int countCommentLikesByCommentId(Long commentId) {

@@ -111,6 +111,12 @@ public class VoteServiceImpl implements VoteService{
         return voteRepository.countByAnswerIdAndVoteType(answerId, VoteType.DISLIKE);
     }
 
+
+    public int  countTotalLikesByAnswer(Long answerId)
+    {
+        return countLikesByAnswer(answerId) - countDislikesByAnswer(answerId);
+    }
+
     @Transactional
     public void removeVote(Long userId, Long answerId)
     {

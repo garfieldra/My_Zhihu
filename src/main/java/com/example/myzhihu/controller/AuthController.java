@@ -32,11 +32,11 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    private UserRepository userRepository;
-    private PasswordEncoder passwordEncoder;
-    private JwtUtil jwtUtil;
-    private UserSearchService userSearchService;
-    private NotificationService notificationService;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
+    private final UserSearchService userSearchService;
+    private final NotificationService notificationService;
     private final JwtBlacklistService jwtBlacklistService;
 
     @Autowired

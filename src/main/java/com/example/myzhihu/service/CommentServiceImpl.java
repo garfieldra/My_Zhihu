@@ -1,8 +1,10 @@
 package com.example.myzhihu.service;
 
 import com.example.myzhihu.dto.CommentRequest;
+import com.example.myzhihu.dto.NotificationRequest;
 import com.example.myzhihu.entity.Answer;
 import com.example.myzhihu.entity.Comment;
+import com.example.myzhihu.entity.NotificationType;
 import com.example.myzhihu.entity.User;
 import com.example.myzhihu.exception.OwnershipMismatchException;
 import com.example.myzhihu.exception.ResourceNotFoundException;
@@ -23,14 +25,17 @@ public class CommentServiceImpl implements CommentService{
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final AnswerRepository answerRepository;
+    private final NotificationService notificationService;
 
-    public CommentServiceImpl(CommentRepository commentRepository, UserRepository userRepository, AnswerRepository answerRepository)
+    public CommentServiceImpl(CommentRepository commentRepository, UserRepository userRepository, AnswerRepository answerRepository, NotificationService notificationService)
     {
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
         this.answerRepository = answerRepository;
+        this.notificationService = notificationService;
     }
 
+    @Transactional
     public Comment addComment(CommentRequest commentRequest) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -63,7 +68,27 @@ public class CommentServiceImpl implements CommentService{
                     .orElseThrow(() -> new ResourceNotFoundException("未找到id为" + commentRequest.getParentCommentId() + "的父评论"));
             comment.setParentComment(parentComment);
         }
-        return commentRepository.save(comment);
+
+        commentRepository.save(comment);
+
+        if(!commentRequest.getUserId().equals(answer.getAuthor().getId()))
+        {
+            NotificationRequest notificationRequest = new NotificationRequest();
+            notificationRequest.setUserId(answer.getAuthor().getId());
+            notificationRequest.setNotificationType(NotificationType.ANSWER_BE_COMMENTED);
+            notificationRequest.setMessage("您在" + answer.getQuestion().getTitle() + "问题下的回答有新的评论");
+            notificationService.sendNotification(notificationRequest);
+        }
+        if(comment.getParentComment() != null && !commentRequest.getUserId().equals(comment.getParentComment().getUser().getId()))
+        {
+            NotificationRequest parentNotificationRequest = new NotificationRequest();
+            parentNotificationRequest.setUserId(comment.getParentComment().getUser().getId());
+            parentNotificationRequest.setNotificationType(NotificationType.COMMENT_BE_COMMENTED);
+            parentNotificationRequest.setMessage("您在" + answer.getQuestion().getTitle() + "问题下的评论有新的回复");
+            notificationService.sendNotification(parentNotificationRequest);
+        }
+
+        return comment;
     }
 
     public List<Comment> getTopLevelCommentsByAnswerId(Long answerId) {
