@@ -18,3 +18,11 @@ spring:
     socket-timeout: 30000
     # username: elastic
     # password: ThYQBHOh_PpImJ*2IDiF
+
+  data:
+    redis:
+      host: localhost
+      port: 6379        # Redis 默认端口
+      database: 0       # 使用第 0 个数据库（0~15 可选）
+      timeout: 6000ms   # 连接超时时间
+

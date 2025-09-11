@@ -1,5 +1,6 @@
 package com.example.myzhihu.service;
 
+import com.example.myzhihu.dto.NotificationRequest;
 import com.example.myzhihu.dto.VoteRequest;
 import com.example.myzhihu.entity.*;
 import com.example.myzhihu.exception.OwnershipMismatchException;
@@ -22,13 +23,15 @@ public class VoteServiceImpl implements VoteService{
     private final AnswerRepository answerRepository;
     private final UserRepository userRepository;
     private final FeedService feedService;
+    private final NotificationService notificationService;
 
-    public VoteServiceImpl(VoteRepository voteRepository, AnswerRepository answerRepository, UserRepository userRepository, FeedService feedService)
+    public VoteServiceImpl(VoteRepository voteRepository, AnswerRepository answerRepository, UserRepository userRepository, FeedService feedService, NotificationService notificationService)
     {
         this.voteRepository = voteRepository;
         this.answerRepository = answerRepository;
         this.userRepository = userRepository;
         this.feedService = feedService;
+        this.notificationService = notificationService;
     }
 
     public Vote addOrUpdateVote(VoteRequest voteRequest)
@@ -72,6 +75,13 @@ public class VoteServiceImpl implements VoteService{
 
                 feedService.createFeed(user.getId(), ActionType.LIKE_ANSWER, answer.getId());
 
+                NotificationRequest notificationRequest = new NotificationRequest();
+                notificationRequest.setUserId(answer.getAuthor().getId());
+                notificationRequest.setNotificationType(NotificationType.ANSWER_BE_LIKED);
+                notificationRequest.setMessage("您在“" + answer.getQuestion().getTitle() + "“问题下的回答收到了新的点赞");
+                notificationService.sendNotification(notificationRequest);
+
+
                 return vote;
             }
             return voteRepository.save(vote);
@@ -85,6 +95,12 @@ public class VoteServiceImpl implements VoteService{
                 {
                     vote = voteRepository.save(vote);
                     feedService.createFeed(vote.getUser().getId(), ActionType.LIKE_ANSWER, vote.getAnswer().getId());
+
+                    NotificationRequest notificationRequest = new NotificationRequest();
+                    notificationRequest.setUserId(vote.getAnswer().getAuthor().getId());
+                    notificationRequest.setNotificationType(NotificationType.ANSWER_BE_LIKED);
+                    notificationRequest.setMessage("您在“" + answer.getQuestion().getTitle() + "“问题下的回答收到了新的点赞");
+                    notificationService.sendNotification(notificationRequest);
                     return vote;
                 }
                 return voteRepository.save(vote);

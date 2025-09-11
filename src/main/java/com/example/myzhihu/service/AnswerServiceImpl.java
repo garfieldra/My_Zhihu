@@ -14,11 +14,13 @@ import com.example.myzhihu.repository.UserRepository;
 import com.example.myzhihu.search.AnswerDocument;
 import com.example.myzhihu.search.AnswerSearchRepository;
 import com.example.myzhihu.search.AnswerSearchService;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import javax.swing.*;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,15 +32,17 @@ public class AnswerServiceImpl implements AnswerService{
     private final UserRepository userRepository;
     private final FeedService feedService;
     private final AnswerSearchService answerSearchService;
+    private final RedisTemplate<String, Object> redisTemplate;
 
 
-    public AnswerServiceImpl(AnswerRepository answerRepository, QuestionRepository questionRepository, UserRepository userRepository, FeedService feedService, AnswerSearchService answerSearchService)
+    public AnswerServiceImpl(AnswerRepository answerRepository, QuestionRepository questionRepository, UserRepository userRepository, FeedService feedService, AnswerSearchService answerSearchService, RedisTemplate<String, Object> redisTemplate)
     {
         this.answerRepository = answerRepository;
         this.questionRepository = questionRepository;
         this.userRepository = userRepository;
         this.feedService = feedService;
         this.answerSearchService = answerSearchService;
+        this.redisTemplate = redisTemplate;
     }
 
     public List<Answer> getAllAnswers()
@@ -46,10 +50,24 @@ public class AnswerServiceImpl implements AnswerService{
         return answerRepository.findAll();
     }
 
+    @Override
     public Answer getAnswerById(Long id)
     {
-        return answerRepository.findById(id)
+        String key = "answer:" + id;
+
+        Answer cachedAnswer = (Answer) redisTemplate.opsForValue().get(key);
+        if(cachedAnswer != null)
+        {
+            return cachedAnswer;
+        }
+
+        Answer answer = answerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("未找到id为" + id + "的回答"));
+
+        redisTemplate.opsForValue().set(key, answer, Duration.ofMinutes(20));
+
+        return answer;
+
     }
 
     public Answer saveAnswer(AnswerRequest answerRequest)
@@ -90,6 +108,8 @@ public class AnswerServiceImpl implements AnswerService{
         answer.setQuestion(question);
         answer = answerRepository.save(answer);
 
+        String key = "answer:" + answer.getId();
+        redisTemplate.opsForValue().set(key, answer, Duration.ofMinutes(20));
 
         AnswerDocument answerDocument = new AnswerDocument(
                 answer.getId(),
@@ -126,6 +146,10 @@ public class AnswerServiceImpl implements AnswerService{
             throw new OwnershipMismatchException("没有删除该回答的权限");
         }
         answerRepository.deleteById(id);
+
+        String key = "answer:" + id;
+        redisTemplate.delete(key);
+
         answerSearchService.deleteAnswerDocumentById(id);
         return;
     }

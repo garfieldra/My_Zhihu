@@ -11,12 +11,14 @@ import com.example.myzhihu.repository.UserRepository;
 import com.example.myzhihu.search.QuestionDocument;
 import com.example.myzhihu.search.QuestionSearchService;
 import com.example.myzhihu.search.QuestionSearchServiceImpl;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import com.example.myzhihu.entity.User;
 
 import org.springframework.security.core.Authentication;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,13 +28,15 @@ public class QuestionServiceImpl implements QuestionService{
     private final UserRepository userRepository;
     private final FeedService feedService;
     private final QuestionSearchService questionSearchService;
+    private final RedisTemplate<String, Object> redisTemplate;
 
-    public QuestionServiceImpl(QuestionRepository questionRepository, UserRepository userRepository, FeedService feedService, QuestionSearchService questionSearchService)
+    public QuestionServiceImpl(QuestionRepository questionRepository, UserRepository userRepository, FeedService feedService, QuestionSearchService questionSearchService, RedisTemplate<String, Object> redisTemplate)
     {
         this.questionRepository = questionRepository;
         this.userRepository = userRepository;
         this.feedService = feedService;
         this.questionSearchService = questionSearchService;
+        this.redisTemplate = redisTemplate;
     }
 
     public List<Question> getAllQuestions()
@@ -42,8 +46,17 @@ public class QuestionServiceImpl implements QuestionService{
 
     public Question getQuestionById(Long id)
     {
-        return questionRepository.findById(id)
+        String key = "question:" + id;
+        Question cachedquestion = (Question) redisTemplate.opsForValue().get(key);
+        if(cachedquestion != null)
+        {
+            return cachedquestion;
+        }
+
+        Question question = questionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("未找到id为" + id + "的问题"));
+        redisTemplate.opsForValue().set(key, question, Duration.ofMinutes(20));
+        return question;
     }
 
 //    public Question saveQuestion(Question question)
@@ -92,6 +105,9 @@ public class QuestionServiceImpl implements QuestionService{
         );
         questionSearchService.saveQuestionDocument(questionDocument);
 
+        String key = "question:" + question.getId();
+        redisTemplate.opsForValue().set(key, question, Duration.ofMinutes(20));
+
         return question;
     }
 
@@ -114,6 +130,10 @@ public class QuestionServiceImpl implements QuestionService{
             throw new OwnershipMismatchException("没有删除该问题的权限");
         }
         questionRepository.deleteById(id);
+
+        String key = "question:" + id;
+        redisTemplate.delete(key);
+
         questionSearchService.deleteQuestionDocumentById(id);
     }
 }

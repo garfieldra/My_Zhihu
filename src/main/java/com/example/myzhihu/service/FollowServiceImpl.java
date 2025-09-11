@@ -1,8 +1,10 @@
 package com.example.myzhihu.service;
 
 import com.example.myzhihu.dto.FollowRequest;
+import com.example.myzhihu.dto.NotificationRequest;
 import com.example.myzhihu.entity.ActionType;
 import com.example.myzhihu.entity.Follow;
+import com.example.myzhihu.entity.NotificationType;
 import com.example.myzhihu.entity.User;
 import com.example.myzhihu.exception.BusinessException;
 import com.example.myzhihu.exception.OwnershipMismatchException;
@@ -22,12 +24,14 @@ public class FollowServiceImpl implements FollowService{
     private final FollowRepository followRepository;
     private final UserRepository userRepository;
     private final FeedService feedService;
+    private final NotificationService notificationService;
 
-    public FollowServiceImpl(FollowRepository followRepository, UserRepository userRepository, FeedService feedService)
+    public FollowServiceImpl(FollowRepository followRepository, UserRepository userRepository, FeedService feedService, NotificationService notificationService)
     {
         this.followRepository = followRepository;
         this.userRepository = userRepository;
         this.feedService = feedService;
+        this.notificationService = notificationService;
     }
 
     public boolean hasUserFollowed(Long followerId, Long followingId)
@@ -51,6 +55,10 @@ public class FollowServiceImpl implements FollowService{
         {
             throw new OwnershipMismatchException("无法以他人账号关注用户");
         }
+        if(followRequest.getFollowingId().equals(follower.getId()))
+        {
+            throw new BusinessException("无法关注自己");
+        }
 
 //        User follower = userRepository.findById(followRequest.getFollowerId())
 //                .orElseThrow(() -> new ResourceNotFoundException("未找到id为" + followRequest.getFollowerId() + "的用户"));
@@ -66,6 +74,12 @@ public class FollowServiceImpl implements FollowService{
         follow = followRepository.save(follow);
 
         feedService.createFeed(follow.getFollower().getId(), ActionType.FOLLOW_USER,  follow.getFollowing().getId());
+
+        NotificationRequest notificationRequest = new NotificationRequest();
+        notificationRequest.setUserId(following.getId());
+        notificationRequest.setNotificationType(NotificationType.BE_FOLLOWED);
+        notificationRequest.setMessage("用户" + follower.getUsername() + "关注了您");
+        notificationService.sendNotification(notificationRequest);
 
         return follow;
     }
